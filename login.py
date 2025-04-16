@@ -18,5 +18,6 @@ def login_form():
         if check_login(username, password):
             st.session_state.logged_in = True
             st.success("Logged in successfully!")
+            st.rerun()  # This will refresh the page to show the rest of the app after login
         else:
             st.error("Incorrect username or password.")
