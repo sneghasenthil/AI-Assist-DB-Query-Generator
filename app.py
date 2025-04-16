@@ -3,6 +3,7 @@ import google.generativeai as genai
 import time
 import mysql.connector
 import pandas as pd
+from login import login_form
 GOOGLE_API_KEY = "AIzaSyCuYZ4RlnhFhwmWqrFSts1A6R7TGb1DRTQ"
 
 genai.configure(api_key= GOOGLE_API_KEY)
@@ -76,6 +77,15 @@ def get_columns(db_name, table_name):
 def main():
     st.set_page_config(page_title="AI SQL Assistant", layout="centered")
     st.title("🤖 AI Assist SQL Query Generator")
+
+     # Check if user is logged in
+    if "logged_in" not in st.session_state or not st.session_state.logged_in:
+        # Show the login form if not logged in
+        login_form()
+        return  # Stop further execution
+
+
+
     st.write("Choose a database and run SQL queries!")
 
     # Show Databases
