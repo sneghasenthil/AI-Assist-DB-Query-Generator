@@ -2,104 +2,139 @@ import streamlit as st
 import google.generativeai as genai
 import time
 import mysql.connector
+import pandas as pd
 GOOGLE_API_KEY = "AIzaSyCuYZ4RlnhFhwmWqrFSts1A6R7TGb1DRTQ"
 
 genai.configure(api_key= GOOGLE_API_KEY)
 #model = genai.GenerativeModel('gemini-1.0-pro')
 model = genai.GenerativeModel('gemini-1.5-pro-latest')
 
-
-
-def run_query(query):
+def get_databases():
     try:
         conn = mysql.connector.connect(
-            host='localhost',
-            user='root',
-            password='',
-            database='company_db'
+            host='localhost', user='root', password=''
+        )
+        cursor = conn.cursor()
+        cursor.execute("SHOW DATABASES")
+        databases = cursor.fetchall()
+        cursor.close()
+        conn.close()
+        return [db[0] for db in databases]
+    except Exception as e:
+        return str(e)
+
+def run_query(query, db_name):
+    try:
+        conn = mysql.connector.connect(
+            host='localhost', user='root', password='', database=db_name
         )
         cursor = conn.cursor()
         cursor.execute(query)
-        results = cursor.fetchall()
-        columns = [desc[0] for desc in cursor.description]
+
+        if cursor.description:  # SELECT-like query
+            results = cursor.fetchall()
+            columns = [desc[0] for desc in cursor.description]
+        else:  # Non-SELECT query like INSERT, UPDATE, ALTER, etc.
+            conn.commit()
+            results = []
+            columns = []
+
         cursor.close()
         conn.close()
         return columns, results
+    except mysql.connector.Error as err:
+        return None, f"Error: {err}"
+
+def get_tables(db_name):
+    try:
+        conn = mysql.connector.connect(
+            host='localhost', user='root', password='', database=db_name
+        )
+        cursor = conn.cursor()
+        cursor.execute("SHOW TABLES")
+        tables = cursor.fetchall()
+        cursor.close()
+        conn.close()
+        return [table[0] for table in tables]
     except Exception as e:
-        return None, str(e)
+        return str(e)
+
+def get_columns(db_name, table_name):
+    try:
+        conn = mysql.connector.connect(
+            host='localhost', user='root', password='', database=db_name
+        )
+        cursor = conn.cursor()
+        cursor.execute(f"DESCRIBE `{table_name}`")
+        columns = cursor.fetchall()
+        cursor.close()
+        conn.close()
+        return [col[0] for col in columns]
+    except Exception as e:
+        return str(e)
 
 def main():
-    st.set_page_config(page_title="AI Assist SQL Generator", page_icon=None)
-    st.markdown(""" 
-    <div>
-    <h1>AI Assist SQL Generator</h1>
-    <h3>I can generate SQL Query for You!!!</h3> 
-    </div>
-    """, unsafe_allow_html=True,
-    )
+    st.set_page_config(page_title="AI SQL Assistant", layout="centered")
+    st.title("🤖 AI Assist SQL Query Generator")
+    st.write("Choose a database and run SQL queries!")
 
-    text_input=st.text_area ("Enter Your Need Here ")
+    # Show Databases
+    databases = get_databases()
+    if isinstance(databases, list):
+        selected_db = st.selectbox("Select a Database", databases)
+        st.session_state.selected_db = selected_db
+    else:
+        st.error(f"Error: {databases}")
+        st.stop()
+
+    st.write(f"Selected Database: `{selected_db}`")
     
-    
-    submit=st.button("generate")
+    # Show Tables
+    tables = get_tables(selected_db)
+    if isinstance(tables, list) and tables:
+        for table in tables:
+            with st.expander(f"📁 {table}"):
+                columns = get_columns(selected_db, table)
+                if isinstance(columns, list):
+                    st.write("🧱 Columns:", ", ".join(columns))
+                else:
+                    st.error(f"Failed to fetch columns: {columns}")
+    else:
+        st.warning("No tables found or error retrieving tables.")
 
-    if submit:
-        with st.spinner("Generate SQL Query..."):
-            template ="""
-                create a SQL query snippet using below text:
+    # Input: natural language for query generation
+    text_input = st.text_area("Enter what you want to do (in natural language):")
 
-                ```
-                        {text_input}
-                ```
-                I just want a SQL Query
+    if st.button("Generate & Run SQL"):
+        if not text_input.strip():
+            st.warning("Please enter something.")
+        else:
+            with st.spinner("Generating SQL query..."):
+                prompt = f"""
+                You are a MySQL expert.
+
+                Generate a valid SQL query based on this request:
+
+                \"\"\"{text_input}\"\"\"
+
+                Only return SQL query. Don't wrap in markdown or give explanation.
                 """
-            
-            formatted_template = template.format(text_input=text_input)
+                response = model.generate_content(prompt)
+                sql_query = response.text.strip().lstrip("```sql").rstrip("```")
 
-            
-            response=model.generate_content(formatted_template)
-
-            sql_query = response.text
-            sql_query=sql_query.strip().lstrip("```sql").rstrip("```")
-
-            expected_output ="""
-                What would be the expected response of this SQL query snippet:
-
-                ```
-                        {sql_query}
-                ```
-                Provide sample tabalur response with no explanation
-
-                """
-            expected_output_formatted=expected_output.format(sql_query=sql_query)
-            e_output=model.generate_content(expected_output_formatted)
-            e_output=e_output.text
-            
-
-            explanation="""
-                Explain this SQL query :
-
-                ```
-                        {sql_query}
-                ```
-                Provide simple explanation
-
-                """
-            
-            explanation_formatted=explanation.format(sql_query=sql_query)
-            explanation=model.generate_content(explanation_formatted)
-            explanation=explanation.text
-
-            with st.container():
-                st.success("SQL query generated Successfully")
-                st.code(sql_query,language="sql")
-
-                time.sleep(5)
-
-                st.success("Explanation for this SQL Query")
-                st.markdown(explanation)
-
-
+            st.code(sql_query, language="sql")
+            with st.spinner("Running query..."):
+                columns, results = run_query(sql_query, selected_db)
+                
+                # For SELECT queries
+                if columns:
+                    st.success("Query executed successfully ✅")
+                    st.dataframe(pd.DataFrame(results, columns=columns))
+                # For non-SELECT queries
+                elif results == []:  # No results but still successful (INSERT, UPDATE, etc.)
+                    st.success("Query executed successfully ✅")
+                else:
+                    st.error(f"Error: {results}")
 
 main()
 
