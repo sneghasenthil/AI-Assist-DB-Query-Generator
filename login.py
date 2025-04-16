@@ -3,6 +3,8 @@ import streamlit as st
 # Define correct login credentials (you can enhance this later for more security)
 USER_CREDENTIALS = {"username": "admin", "password": "password123"}
 
+
+
 # Function for checking login credentials
 def check_login(username, password):
     if username == USER_CREDENTIALS["username"] and password == USER_CREDENTIALS["password"]:

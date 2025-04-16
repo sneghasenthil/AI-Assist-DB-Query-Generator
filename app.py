@@ -10,6 +10,75 @@ genai.configure(api_key= GOOGLE_API_KEY)
 #model = genai.GenerativeModel('gemini-1.0-pro')
 model = genai.GenerativeModel('gemini-1.5-pro-latest')
 
+st.set_page_config(page_title="AI SQL Assistant", layout="centered")
+
+def apply_custom_styles():
+    st.markdown("""
+        <style>
+            @import url('https://fonts.googleapis.com/css2?family=Roboto&display=swap');
+
+            html, body, [class*="css"]  {
+                font-family: 'Roboto', sans-serif;
+                background-color: #f0f2f6;
+            }
+
+            .stApp {
+                padding: 2rem;
+            }
+
+            h1, h2, h3, h4 {
+                color: #1f66b1;
+            }
+
+            .stTextInput > div > div > input,
+            .stTextArea > div > textarea,
+            .stSelectbox > div > div > div {
+                border-radius: 10px;
+                padding: 0.6em;
+                font-size: 16px;
+            }
+
+            .stButton button {
+                background-color: #1f66b1;
+                color: white;
+                border-radius: 10px;
+                padding: 0.5em 1em;
+                font-weight: bold;
+                border: none;
+                transition: all 0.3s ease-in-out;
+            }
+
+            .stButton button:hover {
+                background-color: #144c8c;
+                transform: scale(1.02);
+            }
+
+            .stTextArea textarea {
+                min-height: 150px;
+                padding: 1em;
+                border-radius: 10px;
+                border: 1px solid #ccc;
+                font-size: 15px;
+            }
+
+            .stDataFrame {
+                border-radius: 10px;
+                overflow: hidden;
+            }
+
+            .block-container {
+                padding: 2rem;
+                border-radius: 10px;
+            }
+
+            .stExpanderHeader {
+                font-weight: 600;
+                color: #1f66b1;
+            }
+        </style>
+    """, unsafe_allow_html=True)
+
+
 def get_databases():
     try:
         conn = mysql.connector.connect(
@@ -75,7 +144,8 @@ def get_columns(db_name, table_name):
         return str(e)
 
 def main():
-    st.set_page_config(page_title="AI SQL Assistant", layout="centered")
+    apply_custom_styles()
+    
     st.title("🤖 AI Assist SQL Query Generator")
 
      # Check if user is logged in
