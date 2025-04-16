@@ -1,12 +1,32 @@
 import streamlit as st
 import google.generativeai as genai
 import time
-
+import mysql.connector
 GOOGLE_API_KEY = "AIzaSyCuYZ4RlnhFhwmWqrFSts1A6R7TGb1DRTQ"
 
 genai.configure(api_key= GOOGLE_API_KEY)
 #model = genai.GenerativeModel('gemini-1.0-pro')
 model = genai.GenerativeModel('gemini-1.5-pro-latest')
+
+
+
+def run_query(query):
+    try:
+        conn = mysql.connector.connect(
+            host='localhost',
+            user='root',
+            password='',
+            database='company_db'
+        )
+        cursor = conn.cursor()
+        cursor.execute(query)
+        results = cursor.fetchall()
+        columns = [desc[0] for desc in cursor.description]
+        cursor.close()
+        conn.close()
+        return columns, results
+    except Exception as e:
+        return None, str(e)
 
 def main():
     st.set_page_config(page_title="AI Assist SQL Generator", page_icon=None)
@@ -78,9 +98,6 @@ def main():
 
                 st.success("Explanation for this SQL Query")
                 st.markdown(explanation)
-
-
-
 
 
 
