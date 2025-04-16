@@ -1,7 +1,11 @@
 import streamlit as st
 import google.generativeai as genai
 
-GOOGLE_API_KEY = "AIzaSyDVqP-vhceoBAp8tfnd_F6XKKPB3dHDmDs"
+GOOGLE_API_KEY = "AIzaSyCuYZ4RlnhFhwmWqrFSts1A6R7TGb1DRTQ"
+
+genai.configure(api_key= GOOGLE_API_KEY)
+#model = genai.GenerativeModel('gemini-1.0-pro')
+model = genai.GenerativeModel('gemini-1.5-pro-latest')
 
 def main():
     st.set_page_config(page_title="AI Assist SQL Generator", page_icon=None)
@@ -14,7 +18,16 @@ def main():
     )
 
     text_input=st.text_area ("Enter Your Need Here ")
+    
+    
     submit=st.button("generate")
+
+    if submit:
+        
+        response = model.generate_content(text_input)
+
+        print(response.text)
+        st.write(response.text)
 
 
 
